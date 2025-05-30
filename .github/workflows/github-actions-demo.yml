@@ -1,18 +1,21 @@
 on: [push]
 jobs:
-  # "my_first_job"というジョブIDでジョブを定義
   my_first_job:
     name: API_Keyの取得と表示
     runs-on: ubuntu-latest
     steps:
-      # GitHub SecretsからAPI_KEYを取得し、環境変数に設定
       - name: Set up API Key
         run: echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
 
-      # 環境変数からAPI_KEYを表示
-      - name: Display API Key
-        run: echo "The API Key is $API_KEY"
-  # "my_second_job"というジョブIDでジョブを定義
+      - name: Check if API_KEY is set
+        run: |
+          if [ -z "$API_KEY" ]; then
+            echo "API_KEY is NOT set"
+            exit 1
+          else
+            echo "API_KEY is set"
+          fi
+
   my_second_job:
     name: My second job
     runs-on: ubuntu-latest
