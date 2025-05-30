@@ -1,24 +1,56 @@
-on: [push]
+on:                                      # トリガーの定義
+  push:                                  # プッシュイベント
+    branches:                            # 対象ブランチ
+      - main                             # mainブランチへのプッシュ
 jobs:
-  my_first_job:
-    name: API_Keyの取得と表示
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Set up API Key
-        run: echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Check if API_KEY is set
-        run: |
-          if [ -z "$API_KEY" ]; then
-            echo "API_KEY is NOT set"
-            exit 1
-          else
-            echo "API_KEY is set"
-          fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-  my_second_job:
-    name: My second job
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run build
+        run: npm run build
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.FITHUB_KEY }}
+          source: "."
+          target: "/home/ec2-user/app"
+
+      - name: Run remote SSH commands
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.FITHUB_KEY }}
+          script: |
+            cd /home/ec2-user/app
+            npm install --production
+            pm2 restart all
+    
+  deploy_test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Hello World
-        run: echo "Hello from my second job"
+      - name: Test SSH connection
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.FITHUB_KEY }}
+          script: |
+            echo "SSH connection successful!"
+            uname -a
